@@ -1,0 +1,34 @@
+# Build Related
+bin/
+build/
+out/
+*.obj
+*.pdb
+
+# Vs cache
+.vs/
+.vscode/
+
+# Binaries
+*.exe
+*.dll
+*.so
+*.so.*
+*.lib
+*.a
+*.zip
+*.7z
+*.tar.gz
+*.gz
+*.jar
+*.msi
+*.cab
+*.avi
+*.swf
+*.mp4
+*.wmv
+*.flv
+*.chm
+
+# Test Files
+test_files/

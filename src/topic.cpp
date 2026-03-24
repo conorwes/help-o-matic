@@ -1,0 +1,331 @@
+
+#include <cctype>
+
+#include "topic.hpp"
+
+using namespace tinyxml2;
+using namespace std::filesystem;
+
+Topic::Topic(std::string topic_name, std::string keyword, std::string filename, TopicType type)
+{
+    m_topic_name = topic_name;
+    m_keyword = keyword;
+    m_type = type;
+    auto f = filename;
+    std::replace(f.begin(), f.end(), '.', '-');
+
+    switch (m_type)
+    {
+    case TopicType::domain_object:
+        m_filename = (g_do_dir / (f + ".htm")).string();
+        break;
+
+    case TopicType::constructor:
+        m_filename = (g_cons_dir / (f + ".htm")).string();
+        break;
+
+    case TopicType::property:
+        m_filename = (g_props_dir / (f + ".htm")).string();
+        break;
+
+    case TopicType::method:
+        m_filename = (g_meths_dir / (f + ".htm")).string();
+        break;
+
+    case TopicType::function:
+        m_filename = (g_funcs_dir / (f + ".htm")).string();
+        break;
+
+    default:
+        topic_name = "Error Type";
+        m_filename = (g_autogen_dir / (f + ".htm")).string();
+        break;
+    }
+
+    auto orig = std::string("(),<>{}");
+    auto repl = std::string("__-____");
+
+    size_t index = 0;
+    for (const auto &c : orig)
+    {
+        if (m_filename.find(c) != std::string::npos)
+        {
+            std::replace(m_filename.begin(), m_filename.end(), c, repl[index]);
+        }
+
+        index++;
+    }
+
+    m_filename.erase(std::remove(m_filename.begin(), m_filename.end(), '\n'), m_filename.end());
+    m_filename.erase(std::remove(m_filename.begin(), m_filename.end(), '\r'), m_filename.end());
+    m_filename.erase(std::remove_if(m_filename.begin(), m_filename.end(), ::isspace), m_filename.end());
+}
+
+auto Topic::get_topic_name() -> const std::string &
+{
+    return m_topic_name;
+}
+
+auto Topic::get_keyword() -> const std::string &
+{
+    return m_keyword;
+}
+
+auto Topic::get_filename() -> const std::string &
+{
+    return m_filename;
+}
+
+auto Topic::get_topic_type() -> TopicType
+{
+    return m_type;
+}
+
+auto Topic::create_topic() -> bool
+{
+    XMLDocument doc;
+    XMLDeclaration *decl = doc.NewDeclaration();
+    doc.InsertFirstChild(decl);
+
+    XMLNode *root = doc.NewElement("html");
+    auto root_elem = root->ToElement();
+    root_elem->SetAttribute("xmlns:MadCap", "http://www.madcapsoftware.com/Schemas/MadCap.xsd");
+    doc.InsertEndChild(root);
+
+    auto head = doc.NewElement("head");
+    root->InsertFirstChild(head);
+
+    auto title = doc.NewElement("title");
+    auto topic_name = m_topic_name;
+
+    switch (m_type)
+    {
+    case TopicType::domain_object:
+        topic_name += " Object";
+        break;
+
+    case TopicType::constructor:
+        topic_name += " Constructor";
+        break;
+
+    case TopicType::property:
+        topic_name += " Property";
+        break;
+
+    case TopicType::method:
+        topic_name += " Method";
+        break;
+
+    case TopicType::function:
+        topic_name += " Function";
+        break;
+
+    default:
+        return 1;
+    }
+
+    title->SetText(topic_name.c_str());
+    head->InsertFirstChild(title);
+
+    auto keywords = doc.NewElement("meta");
+    keywords->SetAttribute("name", "keywords");
+    keywords->SetAttribute("content", m_keyword.c_str());
+    head->InsertEndChild(keywords);
+
+    auto http_equiv = doc.NewElement("meta");
+    http_equiv->SetAttribute("http-equiv", "X-UA-Compatible");
+    http_equiv->SetAttribute("content", "IE=edge");
+    head->InsertEndChild(http_equiv);
+
+    auto link = doc.NewElement("link");
+    link->SetAttribute("type", "text/css");
+    link->SetAttribute("href", "Resources/Stylesheets/default.css");
+    link->SetAttribute("rel", "stylesheet");
+    head->InsertEndChild(link);
+
+    auto style = doc.NewElement("style");
+    style->SetAttribute("type", "text/css");
+    style->SetText(std::string("body\n{\n	margin: 0px;\n	background: #FFFFFF;\n}\n\n").c_str());
+    head->InsertEndChild(style);
+
+    /* temporarily comment these out
+    auto script_1 = doc.NewElement("script");
+    script_1->SetAttribute("type", "text/javascript");
+    script_1->SetAttribute("src", "Resources/jquery.js");
+    head->InsertEndChild(script_1);
+
+    auto script_2 = doc.NewElement("script");
+    script_2->SetAttribute("type", "text/javascript");
+    script_2->SetAttribute("src", "Resources/helpman_settings.js");
+    head->InsertEndChild(script_2);
+
+    auto script_3 = doc.NewElement("script");
+    script_3->SetAttribute("type", "text/javascript");
+    script_3->SetAttribute("src", "Resources/helpman_topicinit.js");
+    head->InsertEndChild(script_3);*/
+
+    auto body = doc.NewElement("body");
+    root->InsertEndChild(body);
+
+    auto h1 = doc.NewElement("h1");
+    h1->SetText(topic_name.c_str());
+    body->InsertFirstChild(h1);
+
+    // Description
+    auto desc = doc.NewElement("h2");
+    desc->SetText("Description");
+    body->InsertEndChild(desc);
+
+    auto desc_text = doc.NewElement("p");
+    desc_text->SetText(g_placeholder.c_str());
+    body->InsertEndChild(desc_text);
+
+    if (m_type == TopicType::domain_object)
+    {
+        // Inheritance Hierarchy
+        auto ih = doc.NewElement("b");
+        ih->SetText("Ineritance Hierarchy:");
+        body->InsertEndChild(ih);
+
+        // Editions
+        auto edits = doc.NewElement("h2");
+        edits->SetText("Available In Editions:");
+        body->InsertEndChild(edits);
+        auto editions = doc.NewElement("p");
+        editions->SetText(g_placeholder.c_str());
+        body->InsertEndChild(editions);
+    }
+
+    if (m_type == TopicType::domain_object)
+    {
+        // Constructors
+        auto det = doc.NewElement("details");
+        auto sum = doc.NewElement("summary");
+        auto sb = doc.NewElement("h2");
+        sb->SetText("Constructors");
+        sum->InsertFirstChild(sb);
+        auto cont = doc.NewElement("p");
+        cont->SetText(g_placeholder.c_str());
+        det->InsertFirstChild(cont);
+        det->InsertFirstChild(sum);
+        body->InsertEndChild(det);
+
+        // Properties
+        auto det2 = doc.NewElement("details");
+        auto sum2 = doc.NewElement("summary");
+        auto sb2 = doc.NewElement("h2");
+        sb2->SetText("Properties");
+        sum2->InsertFirstChild(sb2);
+        auto cont2 = doc.NewElement("p");
+        cont2->SetText(g_placeholder.c_str());
+        det2->InsertFirstChild(cont2);
+        det2->InsertFirstChild(sum2);
+        body->InsertEndChild(det2);
+
+        // Methods
+        auto det3 = doc.NewElement("details");
+        auto sum3 = doc.NewElement("summary");
+        auto sb3 = doc.NewElement("h2");
+        sb3->SetText("Methods");
+        sum3->InsertFirstChild(sb3);
+        auto cont3 = doc.NewElement("p");
+        cont3->SetText(g_placeholder.c_str());
+        det3->InsertFirstChild(cont3);
+        det3->InsertFirstChild(sum3);
+        body->InsertEndChild(det3);
+    }
+    else if (m_type == TopicType::property)
+    {
+        // Attributes
+        auto at_h2 = doc.NewElement("h2");
+        at_h2->SetText("Attributes");
+        body->InsertEndChild(at_h2);
+        auto attributes = doc.NewElement("p");
+        attributes->SetText(g_placeholder.c_str());
+        body->InsertEndChild(attributes);
+
+        // Syntax
+        auto sy_h2 = doc.NewElement("h2");
+        sy_h2->SetText("Syntax");
+        body->InsertEndChild(sy_h2);
+        auto syntax = doc.NewElement("p");
+        syntax->SetText(g_placeholder.c_str());
+        body->InsertEndChild(syntax);
+    }
+    else if (m_type == TopicType::method)
+    {
+        // Overload List
+        auto ol_h2 = doc.NewElement("h2");
+        ol_h2->SetText("Overload List");
+        body->InsertEndChild(ol_h2);
+        auto olist = doc.NewElement("p");
+        olist->SetText(g_placeholder.c_str());
+        body->InsertEndChild(olist);
+
+        // Arguments
+        auto ar_h2 = doc.NewElement("h2");
+        ar_h2->SetText("Arguments");
+        body->InsertEndChild(ar_h2);
+        auto arguments = doc.NewElement("p");
+        arguments->SetText(g_placeholder.c_str());
+        body->InsertEndChild(arguments);
+    }
+    else if (m_type == TopicType::constructor)
+    {
+        // Constructor Signature
+        auto cs_h2 = doc.NewElement("h2");
+        cs_h2->SetText("Constructor Signature");
+        body->InsertEndChild(cs_h2);
+        auto cs = doc.NewElement("p");
+        cs->SetText(g_placeholder.c_str());
+        body->InsertEndChild(cs);
+
+        // Arguments
+        auto ar_h2 = doc.NewElement("h2");
+        ar_h2->SetText("Arguments");
+        body->InsertEndChild(ar_h2);
+        auto arguments = doc.NewElement("p");
+        arguments->SetText(g_placeholder.c_str());
+        body->InsertEndChild(arguments);
+
+        // Syntax
+        auto sy_h2 = doc.NewElement("h2");
+        sy_h2->SetText("Syntax");
+        body->InsertEndChild(sy_h2);
+        auto syntax = doc.NewElement("p");
+        syntax->SetText(g_placeholder.c_str());
+        body->InsertEndChild(syntax);
+    }
+    else if (m_type == TopicType::function)
+    {
+        // Overload List
+        auto ol_h2 = doc.NewElement("h2");
+        ol_h2->SetText("Overload List");
+        body->InsertEndChild(ol_h2);
+        auto olist = doc.NewElement("p");
+        olist->SetText(g_placeholder.c_str());
+        body->InsertEndChild(olist);
+
+        // Arguments
+        auto ar_h2 = doc.NewElement("h2");
+        ar_h2->SetText("Arguments");
+        body->InsertEndChild(ar_h2);
+        auto arguments = doc.NewElement("p");
+        arguments->SetText(g_placeholder.c_str());
+        body->InsertEndChild(arguments);
+    }
+
+    // See Also
+    auto seealso = doc.NewElement("h2");
+    seealso->SetText("See also");
+    body->InsertEndChild(seealso);
+    auto sap = doc.NewElement("p");
+    sap->SetText(g_placeholder.c_str());
+    body->InsertEndChild(sap);
+
+    auto result = doc.SaveFile(m_filename.c_str());
+    if (result != XML_SUCCESS)
+        return false;
+
+    return true;
+}
