@@ -28,15 +28,19 @@ auto main() -> int
     if (root == nullptr)
         return 1;
 
-    auto isExcludedType = [](const std::string& type) -> bool {
+    auto isExcludedType = [](const std::string &type) -> bool
+    {
         std::vector<std::string> excluded_types = {"FFDiagnostics"};
 
-        if (type.find("List<") != std::string::npos) {
+        if (type.find("List<") != std::string::npos)
+        {
             return (type.find("List<Object>") == std::string::npos);
         }
 
-        for (auto t : excluded_types) {
-            if (type.find(t) != std::string::npos) {
+        for (auto t : excluded_types)
+        {
+            if (type.find(t) != std::string::npos)
+            {
                 return true;
             }
         }
@@ -103,7 +107,8 @@ auto main() -> int
                                 }
                             }
                         }
-                        else {
+                        else
+                        {
                             return 1;
                         }
                     }
@@ -118,34 +123,38 @@ auto main() -> int
                 domainObjects.push_back(d);
             }
         }
-    }    
+    }
 
     // 4. Recursive search for "Function" tags
     XMLNode *functionsNode = objectsNode->NextSibling();
-    for (XMLElement *e = functionsNode->FirstChildElement(); e != nullptr; e = e->NextSiblingElement()) {
+    for (XMLElement *e = functionsNode->FirstChildElement(); e != nullptr; e = e->NextSiblingElement())
+    {
         // We should only ever hit "Function" nodes, but it can't hurt to be sure
         if (std::string(e->Value()) == std::string("Function"))
+        {
+            // This node is a Function
+            const char *funcNameAttr = e->Attribute("name");
+            if (funcNameAttr != nullptr)
             {
-                // This node is a Function
-                const char *funcNameAttr = e->Attribute("name");
-                if (funcNameAttr != nullptr)
+                XMLElement *overloads = e->FirstChildElement();
+                for (XMLElement *o = overloads->FirstChildElement(); o != nullptr; o = o->NextSiblingElement())
                 {
-                    XMLElement *overloads = e->FirstChildElement();
-                    for (XMLElement *o = overloads->FirstChildElement(); o != nullptr; o = o->NextSiblingElement())
-                    {
-                        const char *signature = o->GetText();
-                        funcs[funcNameAttr].push_back(std::string(signature));
-                    }
+                    const char *signature = o->GetText();
+                    funcs[funcNameAttr].push_back(std::string(signature));
                 }
             }
+        }
     }
 
     // 5. Verify the existence of the output directories
     std::vector<std::filesystem::path> autogen_paths = {g_autogen_dir, g_do_dir, g_cons_dir, g_props_dir, g_meths_dir, g_funcs_dir};
-    for (auto p : autogen_paths) {
+    for (auto p : autogen_paths)
+    {
         std::error_code ec;
-        if (!std::filesystem::create_directory(p, ec)) {
-            if (ec) {
+        if (!std::filesystem::create_directory(p, ec))
+        {
+            if (ec)
+            {
                 std::cout << ec.message();
                 return 1;
             }
@@ -172,7 +181,7 @@ auto main() -> int
                 auto name = c;
                 auto keyword = c;
                 auto filename = c;
-                Topic cT(name, keyword, filename, TopicType::constructor);
+                Topic cT(name, keyword, filename, TopicType::constructor, true);
                 if (!cT.create_topic())
                     return 1;
             }
@@ -195,12 +204,23 @@ auto main() -> int
         {
             for (auto m : d.Methods)
             {
+                if (m.second.size() > 1)
+                {
+                    // Multiple overloads -> we need a method summary page
+                    auto name = d.Name + "." + m.first;
+                    auto keyword = d.Name + "." + m.first;
+                    auto filename = d.Name + "." + m.first;
+                    Topic mT(name, keyword, filename, TopicType::method);
+                    if (!mT.create_topic())
+                        return 1;
+                }
+
                 for (auto o : m.second)
                 {
                     auto name = o;
                     auto keyword = o;
                     auto filename = o;
-                    Topic mT(name, keyword, filename, TopicType::method);
+                    Topic mT(name, keyword, filename, TopicType::method, true);
                     if (!mT.create_topic())
                         return 1;
                 }
@@ -209,14 +229,27 @@ auto main() -> int
     }
 
     // 7. Next iterate through each of the Functions, create a Topic, and generate the placeholder file
-    for (auto f : funcs) {
-        for (auto o : f.second) {
+    for (auto f : funcs)
+    {
+        if (f.second.size() > 1)
+        {
+            // Multiple overloads -> we need a function summary page
+            auto name = f.first;
+            auto keyword = f.first;
+            auto filename = f.first;
+            Topic fT(name, keyword, filename, TopicType::function);
+            if (!fT.create_topic())
+                return 1;
+        }
+
+        for (auto o : f.second)
+        {
             auto name = o;
             auto keyword = o;
             auto filename = o;
-            Topic fT(name, keyword, filename, TopicType::function);
+            Topic fT(name, keyword, filename, TopicType::function, true);
             if (!fT.create_topic())
-            return 1;
+                return 1;
 
             topics.push_back(fT);
         }

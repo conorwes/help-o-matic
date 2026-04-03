@@ -14,7 +14,7 @@ enum class TopicType
 class Topic
 {
 public:
-    Topic(std::string topic_name, std::string keyword, std::string filename, TopicType type);
+    Topic(std::string topic_name, std::string keyword, std::string filename, TopicType type, bool needs_signature=false);
     auto get_topic_name() -> const std::string &;
     auto get_keyword() -> const std::string &;
     auto get_filename() -> const std::string &;
@@ -26,4 +26,5 @@ private:
     std::string m_keyword;
     std::string m_filename;
     TopicType m_type;
+    bool m_needs_signature;
 };

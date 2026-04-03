@@ -6,11 +6,12 @@
 using namespace tinyxml2;
 using namespace std::filesystem;
 
-Topic::Topic(std::string topic_name, std::string keyword, std::string filename, TopicType type)
+Topic::Topic(std::string topic_name, std::string keyword, std::string filename, TopicType type, bool needs_signature)
 {
     m_topic_name = topic_name;
     m_keyword = keyword;
     m_type = type;
+    m_needs_signature = needs_signature;
     auto f = filename;
     std::replace(f.begin(), f.end(), '.', '-');
 
@@ -83,6 +84,13 @@ auto Topic::get_topic_type() -> TopicType
 
 auto Topic::create_topic() -> bool
 {
+    // before we do anything, make sure the file doesn't already exist - we don't want to blow away any manual content
+    if (std::filesystem::exists(m_filename))
+    {
+        std::cout << "File '" + m_filename + "' already exists, skipping...";
+        return 1;
+    }
+
     XMLDocument doc;
     XMLDeclaration *decl = doc.NewDeclaration();
     doc.InsertFirstChild(decl);
@@ -187,6 +195,18 @@ auto Topic::create_topic() -> bool
         ih->SetText("Ineritance Hierarchy:");
         body->InsertEndChild(ih);
 
+        auto ih_text = doc.NewElement("p");
+        ih_text->SetText(g_placeholder.c_str());
+        body->InsertEndChild(ih_text);
+
+        auto po = doc.NewElement("b");
+        po->SetText("Parent Object:");
+        body->InsertEndChild(po);
+
+        auto po_text = doc.NewElement("p");
+        po_text->SetText(g_placeholder.c_str());
+        body->InsertEndChild(po_text);
+
         // Editions
         auto edits = doc.NewElement("h2");
         edits->SetText("Available In Editions:");
@@ -254,31 +274,63 @@ auto Topic::create_topic() -> bool
     }
     else if (m_type == TopicType::method)
     {
-        // Overload List
-        auto ol_h2 = doc.NewElement("h2");
-        ol_h2->SetText("Overload List");
-        body->InsertEndChild(ol_h2);
-        auto olist = doc.NewElement("p");
-        olist->SetText(g_placeholder.c_str());
-        body->InsertEndChild(olist);
+        if (m_needs_signature)
+        {
+            // Method Signature
+            auto ms_h2 = doc.NewElement("h2");
+            ms_h2->SetText("Method Signature");
+            body->InsertEndChild(ms_h2);
+            auto ms = doc.NewElement("p");
+            ms->SetText(m_topic_name.c_str());
+            body->InsertEndChild(ms);
 
-        // Arguments
-        auto ar_h2 = doc.NewElement("h2");
-        ar_h2->SetText("Arguments");
-        body->InsertEndChild(ar_h2);
-        auto arguments = doc.NewElement("p");
-        arguments->SetText(g_placeholder.c_str());
-        body->InsertEndChild(arguments);
+            // Arguments
+            auto ar_h2 = doc.NewElement("h2");
+            ar_h2->SetText("Arguments");
+            body->InsertEndChild(ar_h2);
+            auto arguments = doc.NewElement("p");
+            arguments->SetText(g_placeholder.c_str());
+            body->InsertEndChild(arguments);
+
+            // Return Value
+            auto rv_h2 = doc.NewElement("h2");
+            rv_h2->SetText("Return Value");
+            body->InsertEndChild(rv_h2);
+            auto value = doc.NewElement("p");
+            value->SetText(g_placeholder.c_str());
+            body->InsertEndChild(value);
+
+            // Syntax
+            auto s_h2 = doc.NewElement("h2");
+            s_h2->SetText("Syntax");
+            body->InsertEndChild(s_h2);
+            auto syntax = doc.NewElement("p");
+            syntax->SetText(g_placeholder.c_str());
+            body->InsertEndChild(syntax);
+        }
+        else
+        {
+            // Overload List
+            auto ol_h2 = doc.NewElement("h2");
+            ol_h2->SetText("Overload List");
+            body->InsertEndChild(ol_h2);
+            auto olist = doc.NewElement("p");
+            olist->SetText(g_placeholder.c_str());
+            body->InsertEndChild(olist);
+        }
     }
     else if (m_type == TopicType::constructor)
     {
-        // Constructor Signature
-        auto cs_h2 = doc.NewElement("h2");
-        cs_h2->SetText("Constructor Signature");
-        body->InsertEndChild(cs_h2);
-        auto cs = doc.NewElement("p");
-        cs->SetText(g_placeholder.c_str());
-        body->InsertEndChild(cs);
+        if (m_needs_signature)
+        {
+            // Constructor Signature
+            auto cs_h2 = doc.NewElement("h2");
+            cs_h2->SetText("Constructor Signature");
+            body->InsertEndChild(cs_h2);
+            auto cs = doc.NewElement("p");
+            cs->SetText(m_topic_name.c_str());
+            body->InsertEndChild(cs);
+        }
 
         // Arguments
         auto ar_h2 = doc.NewElement("h2");
@@ -298,21 +350,50 @@ auto Topic::create_topic() -> bool
     }
     else if (m_type == TopicType::function)
     {
-        // Overload List
-        auto ol_h2 = doc.NewElement("h2");
-        ol_h2->SetText("Overload List");
-        body->InsertEndChild(ol_h2);
-        auto olist = doc.NewElement("p");
-        olist->SetText(g_placeholder.c_str());
-        body->InsertEndChild(olist);
+        if (m_needs_signature)
+        {
+            // Function Signature
+            auto fs_h2 = doc.NewElement("h2");
+            fs_h2->SetText("Function Signature");
+            body->InsertEndChild(fs_h2);
+            auto fs = doc.NewElement("p");
+            fs->SetText(m_topic_name.c_str());
+            body->InsertEndChild(fs);
 
-        // Arguments
-        auto ar_h2 = doc.NewElement("h2");
-        ar_h2->SetText("Arguments");
-        body->InsertEndChild(ar_h2);
-        auto arguments = doc.NewElement("p");
-        arguments->SetText(g_placeholder.c_str());
-        body->InsertEndChild(arguments);
+            // Arguments
+            auto ar_h2 = doc.NewElement("h2");
+            ar_h2->SetText("Arguments");
+            body->InsertEndChild(ar_h2);
+            auto arguments = doc.NewElement("p");
+            arguments->SetText(g_placeholder.c_str());
+            body->InsertEndChild(arguments);
+
+            // Return Value
+            auto rv_h2 = doc.NewElement("h2");
+            rv_h2->SetText("Return Value");
+            body->InsertEndChild(rv_h2);
+            auto value = doc.NewElement("p");
+            value->SetText(g_placeholder.c_str());
+            body->InsertEndChild(value);
+
+            // Syntax
+            auto s_h2 = doc.NewElement("h2");
+            s_h2->SetText("Syntax");
+            body->InsertEndChild(s_h2);
+            auto syntax = doc.NewElement("p");
+            syntax->SetText(g_placeholder.c_str());
+            body->InsertEndChild(syntax);
+        }
+        else
+        {
+            // Overload List
+            auto ol_h2 = doc.NewElement("h2");
+            ol_h2->SetText("Overload List");
+            body->InsertEndChild(ol_h2);
+            auto olist = doc.NewElement("p");
+            olist->SetText(g_placeholder.c_str());
+            body->InsertEndChild(olist);
+        }
     }
 
     // See Also
@@ -323,9 +404,14 @@ auto Topic::create_topic() -> bool
     sap->SetText(g_placeholder.c_str());
     body->InsertEndChild(sap);
 
-    auto result = doc.SaveFile(m_filename.c_str());
-    if (result != XML_SUCCESS)
+    FILE *fp = nullptr;
+    errno_t err = fopen_s(&fp, m_filename.c_str(), "w");
+    if (err != 0)
         return false;
+
+    tinyxml2::XMLPrinter printer(fp);
+    doc.Print(&printer);
+    fclose(fp);
 
     return true;
 }
