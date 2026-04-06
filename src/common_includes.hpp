@@ -26,6 +26,7 @@ const std::filesystem::path g_meths_dir = g_autogen_dir / "Methods";
 const std::filesystem::path g_funcs_dir = g_autogen_dir / "Functions";
 
 const std::string g_placeholder = "%%PLACEHOLDER%%";
+const std::string g_header_color = "#808080";
 
 struct DomainObject
 {

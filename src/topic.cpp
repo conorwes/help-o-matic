@@ -82,7 +82,7 @@ auto Topic::get_topic_type() -> TopicType
     return m_type;
 }
 
-auto Topic::create_topic() -> bool
+auto Topic::create_topic(std::string prev_topic, std::string next_topic) -> bool
 {
     // before we do anything, make sure the file doesn't already exist - we don't want to blow away any manual content
     if (std::filesystem::exists(m_filename))
@@ -147,7 +147,7 @@ auto Topic::create_topic() -> bool
 
     auto link = doc.NewElement("link");
     link->SetAttribute("type", "text/css");
-    link->SetAttribute("href", "Resources/Stylesheets/default.css");
+    link->SetAttribute("href", "../../Resources/Stylesheets/default.css");
     link->SetAttribute("rel", "stylesheet");
     head->InsertEndChild(link);
 
@@ -156,28 +156,80 @@ auto Topic::create_topic() -> bool
     style->SetText(std::string("body\n{\n	margin: 0px;\n	background: #FFFFFF;\n}\n\n").c_str());
     head->InsertEndChild(style);
 
-    /* temporarily comment these out
+    /* temporarily comment this out
     auto script_1 = doc.NewElement("script");
     script_1->SetAttribute("type", "text/javascript");
-    script_1->SetAttribute("src", "Resources/jquery.js");
+    script_1->SetAttribute("src", "../../Resources/jquery.js");
     head->InsertEndChild(script_1);
 
     auto script_2 = doc.NewElement("script");
     script_2->SetAttribute("type", "text/javascript");
-    script_2->SetAttribute("src", "Resources/helpman_settings.js");
+    script_2->SetAttribute("src", "../../Resources/helpman_settings.js");
     head->InsertEndChild(script_2);
 
     auto script_3 = doc.NewElement("script");
     script_3->SetAttribute("type", "text/javascript");
-    script_3->SetAttribute("src", "Resources/helpman_topicinit.js");
+    script_3->SetAttribute("src", "../../Resources/helpman_topicinit.js");
     head->InsertEndChild(script_3);*/
 
     auto body = doc.NewElement("body");
     root->InsertEndChild(body);
 
+    // Header
+    auto header_table = doc.NewElement("table");
+    auto style_text = "width: 100%;border: none;border-spacing: 0px;padding: 5px;background: " + g_header_color + ";";
+    header_table->SetAttribute("style", style_text.c_str());
+
+    auto tr = doc.NewElement("tr");
+    tr->SetAttribute("style", "vertical-align: middle;");
+
+    auto td1 = doc.NewElement("td");
+    td1->SetAttribute("style", "text-align: left;");
+
+    auto td2 = doc.NewElement("td");
+    td2->SetAttribute("style", "text-align: right;");
+    auto a1 = doc.NewElement("a");
+    a1->SetAttribute("href", "../../welcome.htm");
+    a1->SetText("Top");
+    td2->InsertFirstChild(a1);
+
+    if (m_type == TopicType::domain_object || m_type == TopicType::function)
+    {
+        auto a2 = doc.NewElement("a");
+        a2->SetAttribute("href", prev_topic.c_str());
+        a2->SetText("Previous");
+        auto a3 = doc.NewElement("a");
+        a3->SetAttribute("href", next_topic.c_str());
+        a3->SetText("Next");
+        td2->InsertEndChild(a2);
+        td2->InsertEndChild(a3);
+    }
+
     auto h1 = doc.NewElement("h1");
+    h1->SetAttribute("class", "p_Heading1");
+
+    auto h1_keyword = doc.NewElement("MadCap:keyword");
+    h1_keyword->SetAttribute("term", m_keyword.c_str());
+
+    auto h1_span = doc.NewElement("span");
+    h1_span->SetAttribute("class", "f_Heading1");
+    h1_span->SetText(topic_name.c_str());
+
+    auto h1_span_keyword = doc.NewElement("MadCap:keyword");
+    h1_span_keyword->SetAttribute("term", m_keyword.c_str());
+
+    h1_span->InsertFirstChild(h1_span_keyword);
+    h1->InsertFirstChild(h1_keyword);
+    h1->InsertEndChild(h1_span);
+    td1->InsertFirstChild(h1);
+    tr->InsertFirstChild(td1);
+    tr->InsertEndChild(td2);
+    header_table->InsertFirstChild(tr);
+    body->InsertFirstChild(header_table);
+
+    /*auto h1 = doc.NewElement("h1");
     h1->SetText(topic_name.c_str());
-    body->InsertFirstChild(h1);
+    body->InsertFirstChild(h1);*/
 
     // Description
     auto desc = doc.NewElement("h2");

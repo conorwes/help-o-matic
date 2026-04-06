@@ -19,7 +19,7 @@ public:
     auto get_keyword() -> const std::string &;
     auto get_filename() -> const std::string &;
     auto get_topic_type() -> TopicType;
-    auto create_topic() -> bool;
+    auto create_topic(std::string prev_topic="", std::string next_topic="") -> bool;
 
 private:
     std::string m_topic_name;
