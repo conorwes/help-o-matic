@@ -2,15 +2,6 @@
 
 #include "common_includes.hpp"
 
-enum class TopicType
-{
-    domain_object,
-    function,
-    property,
-    method,
-    constructor
-};
-
 class Topic
 {
 public:

@@ -6,6 +6,9 @@
 #include <optional>
 #include <vector>
 #include <unordered_map>
+#include <cctype>
+#include <algorithm>
+#include <map>
 
 #include "include/tinyxml2.h"
 
@@ -27,6 +30,29 @@ const std::filesystem::path g_funcs_dir = g_autogen_dir / "Functions";
 
 const std::string g_placeholder = "%%PLACEHOLDER%%";
 const std::string g_header_color = "#808080";
+
+
+enum class TopicType
+{
+    domain_object,
+    function,
+    property,
+    method,
+    constructor
+};
+
+struct TypeInfo {
+    std::filesystem::path dir;
+    std::string suffix;
+};
+
+static const std::map<TopicType, TypeInfo> g_type_map = {
+    {TopicType::domain_object, {g_do_dir, " Object"}},
+    {TopicType::constructor,   {g_cons_dir, " Constructor"}},
+    {TopicType::property,      {g_props_dir, " Property"}},
+    {TopicType::method,        {g_meths_dir, " Method"}},
+    {TopicType::function,      {g_funcs_dir, " Function"}}
+};
 
 struct DomainObject
 {
