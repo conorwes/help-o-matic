@@ -258,7 +258,7 @@ auto main() -> int
 
     // 7. Next iterate through each of the Functions, create a Topic, and generate the placeholder file
     auto availableFunctions = Topic(std::string("Available Functions"), std::string("available functions"), std::string("available_functions"), TopicType::available_funcs);
-    availableFunctions.create_topic(domainObjects.back().Name + ".htm", funcs.begin()->first + ".htm");
+    availableFunctions.create_topic("../DomainObjects/" + domainObjects.back().Name + ".htm", funcs.begin()->first + ".htm");
     topics.push_back(availableFunctions);
 
     for (auto it = funcs.begin(); it != funcs.end(); ++it)

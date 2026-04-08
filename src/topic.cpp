@@ -9,14 +9,13 @@ Topic::Topic(std::string topic_name, std::string keyword, std::string filename, 
     std::string f = filename;
     std::replace(f.begin(), f.end(), '.', '-');
 
-    // 1. Determine Directory
+    // Determine the directory
     auto it = g_type_map.find(m_type);
     path target_dir = (it != g_type_map.end()) ? it->second.dir : g_autogen_dir;
     m_filename = (target_dir / (f + ".htm")).string();
 
-    // 2. Sanitize Filename
+    // Sanitize the filename
     sanitize_filename(m_filename, g_bad_chars, g_good_chars);
-
     m_filename.erase(std::remove_if(m_filename.begin(), m_filename.end(), [](unsigned char c)
                                     { return std::isspace(c) || c == '\n' || c == '\r'; }),
                      m_filename.end());
