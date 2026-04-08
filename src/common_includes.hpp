@@ -37,7 +37,9 @@ enum class TopicType
     function,
     property,
     method,
-    constructor
+    constructor,
+    available_dos,
+    available_funcs
 };
 
 struct TypeInfo {
@@ -50,7 +52,9 @@ static const std::map<TopicType, TypeInfo> g_type_map = {
     {TopicType::constructor,   {g_cons_dir, " Constructor"}},
     {TopicType::property,      {g_props_dir, " Property"}},
     {TopicType::method,        {g_meths_dir, " Method"}},
-    {TopicType::function,      {g_funcs_dir, " Function"}}
+    {TopicType::function,      {g_funcs_dir, " Function"}},
+    {TopicType::available_dos, {g_do_dir, ""}},
+    {TopicType::available_funcs, {g_funcs_dir, ""}}
 };
 
 struct CaseInsensitiveComparer {

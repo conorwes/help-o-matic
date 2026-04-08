@@ -163,11 +163,15 @@ auto main() -> int
 
     // 6. Now iterate through each of the DomainObjects, create a Topic, and generate the placeholder file
     std::vector<Topic> topics;
+    auto availableObjects = Topic(std::string("Available Objects"), std::string("available objects"), std::string("available_objects"), TopicType::available_dos);
+    availableObjects.create_topic("../../objects_and_functions.htm", domainObjects.begin()->Name + ".htm");
+    topics.push_back(availableObjects);
+
     for (auto it = domainObjects.begin(); it != domainObjects.end(); ++it)
     {
         std::string prev_topic, next_topic;
         if (it == domainObjects.begin()) {
-            prev_topic = ""; // TODO - need to automatically generate the "Available Objects" page
+            prev_topic = "available_objects.htm";
         } else {
             auto filename = std::prev(it)->Name;
             sanitize_filename(filename, g_bad_chars, g_good_chars);
@@ -247,11 +251,15 @@ auto main() -> int
     }
 
     // 7. Next iterate through each of the Functions, create a Topic, and generate the placeholder file
+    auto availableFunctions = Topic(std::string("Available Functions"), std::string("available functions"), std::string("available_functions"), TopicType::available_funcs);
+    availableFunctions.create_topic(domainObjects.back().Name + ".htm", funcs.begin()->first + ".htm");
+    topics.push_back(availableFunctions);
+
     for (auto it = funcs.begin(); it != funcs.end(); ++it)
     {
         std::string prev_topic, next_topic;
         if (it == funcs.begin()) {
-            prev_topic = ""; // TODO - need to automatically generate the "Available Functions" page
+            prev_topic = "available_functions.htm";
         } else {
             auto filename = std::prev(it)->first;
             sanitize_filename(filename, g_bad_chars, g_good_chars);

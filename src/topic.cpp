@@ -17,9 +17,9 @@ Topic::Topic(std::string topic_name, std::string keyword, std::string filename, 
     // 2. Sanitize Filename
     sanitize_filename(m_filename, g_bad_chars, g_good_chars);
 
-    m_filename.erase(std::remove_if(m_filename.begin(), m_filename.end(), [](unsigned char c) {
-        return std::isspace(c) || c == '\n' || c == '\r';
-    }), m_filename.end());
+    m_filename.erase(std::remove_if(m_filename.begin(), m_filename.end(), [](unsigned char c)
+                                    { return std::isspace(c) || c == '\n' || c == '\r'; }),
+                     m_filename.end());
 }
 
 auto Topic::get_topic_name() -> const std::string &
@@ -43,19 +43,22 @@ auto Topic::get_topic_type() -> TopicType
 }
 
 // Helper functions for legibility
-XMLElement* add_element(XMLNode* parent, const char* name, const char* text = nullptr) {
+XMLElement *add_element(XMLNode *parent, const char *name, const char *text = nullptr)
+{
     auto el = parent->GetDocument()->NewElement(name);
-    if (text) el->SetText(text);
+    if (text)
+        el->SetText(text);
     parent->InsertEndChild(el);
     return el;
 }
 
-void add_styled_section(XMLNode* parent, const std::string& title) {
+void add_styled_section(XMLNode *parent, const std::string &title)
+{
     auto h2 = add_element(parent, "h2");
     h2->SetAttribute("class", "p_Heading2");
     auto span = add_element(h2, "span", title.c_str());
     span->SetAttribute("class", "f_Heading2");
-    
+
     auto p = add_element(parent, "p", g_placeholder.c_str());
     p->SetAttribute("class", "p_Normal");
 }
@@ -63,7 +66,8 @@ void add_styled_section(XMLNode* parent, const std::string& title) {
 // Main generation logic
 auto Topic::create_topic(std::string prev_topic, std::string next_topic) -> bool
 {
-    if (exists(path(m_filename))) {
+    if (exists(path(m_filename)))
+    {
         std::cout << "File '" << m_filename << "' exists, skipping...\n";
         return true;
     }
@@ -92,7 +96,7 @@ auto Topic::create_topic(std::string prev_topic, std::string next_topic) -> bool
 
     // Body Section
     auto body = add_element(root, "body");
-    
+
     // Header Table
     auto table = add_element(body, "table");
     table->SetAttribute("style", ("width: 100%; border: none; padding: 5px; background: " + g_header_color).c_str());
@@ -101,7 +105,7 @@ auto Topic::create_topic(std::string prev_topic, std::string next_topic) -> bool
 
     auto td_left = add_element(tr, "td");
     td_left->SetAttribute("style", "text-align: left;");
-    
+
     // Heading with MadCap Keywords
     auto h1 = add_element(td_left, "h1");
     h1->SetAttribute("class", "p_Heading1");
@@ -115,46 +119,62 @@ auto Topic::create_topic(std::string prev_topic, std::string next_topic) -> bool
     auto a_top = add_element(td_right, "a", "Top");
     a_top->SetAttribute("href", "../../welcome.htm");
 
-    if (m_type == TopicType::domain_object || m_type == TopicType::function) {
+    if (m_type == TopicType::domain_object || m_type == TopicType::function || m_type == TopicType::available_dos || m_type == TopicType::available_funcs)
+    {
         add_element(td_right, "a", "Previous")->SetAttribute("href", prev_topic.c_str());
         add_element(td_right, "a", "Next")->SetAttribute("href", next_topic.c_str());
     }
 
-    // Content Generation
-    add_styled_section(body, "Description");
-
-    if (m_type == TopicType::domain_object) {
-        add_element(body, "b", "Inheritance Hierarchy:");
+    // If this is an "Available Objects" or "Available Functions" page, just put in the placeholder text
+    if (m_type == TopicType::available_dos || m_type == TopicType::available_funcs)
+    {
         add_element(body, "p", g_placeholder.c_str())->SetAttribute("class", "p_Normal");
-        add_styled_section(body, "Available In Editions:");
-        
-        // Collapsible sections
-        for (const auto& section : {"Constructors", "Properties", "Methods"}) {
-            auto det = add_element(body, "details");
-            auto sum = add_element(det, "summary");
-            auto h = add_element(sum, "h2");
-            h->SetAttribute("class", "p_Heading2");
-            add_element(h, "span", section)->SetAttribute("class", "f_Heading2");
-            add_element(det, "p", g_placeholder.c_str())->SetAttribute("class", "p_Normal");
-        }
-    } 
-    else if (m_type == TopicType::property) {
-        add_styled_section(body, "Attributes");
-        add_styled_section(body, "Syntax");
     }
-    else if (m_type == TopicType::method || m_type == TopicType::function || m_type == TopicType::constructor) {
-        if (m_needs_signature) {
-            add_styled_section(body, "Signature");
-            add_styled_section(body, "Arguments");
-            if (m_type != TopicType::constructor)
-                add_styled_section(body, "Return Value");
-            add_styled_section(body, "Syntax");
-        } else {
-            add_styled_section(body, "Overload List");
-        }
-    }
+    else
+    {
+        // Content Generation
+        add_styled_section(body, "Description");
 
-    add_styled_section(body, "See also");
+        if (m_type == TopicType::domain_object)
+        {
+            add_element(body, "b", "Inheritance Hierarchy:");
+            add_element(body, "p", g_placeholder.c_str())->SetAttribute("class", "p_Normal");
+            add_styled_section(body, "Available In Editions:");
+
+            // Collapsible sections
+            for (const auto &section : {"Constructors", "Properties", "Methods"})
+            {
+                auto det = add_element(body, "details");
+                auto sum = add_element(det, "summary");
+                auto h = add_element(sum, "h2");
+                h->SetAttribute("class", "p_Heading2");
+                add_element(h, "span", section)->SetAttribute("class", "f_Heading2");
+                add_element(det, "p", g_placeholder.c_str())->SetAttribute("class", "p_Normal");
+            }
+        }
+        else if (m_type == TopicType::property)
+        {
+            add_styled_section(body, "Attributes");
+            add_styled_section(body, "Syntax");
+        }
+        else if (m_type == TopicType::method || m_type == TopicType::function || m_type == TopicType::constructor)
+        {
+            if (m_needs_signature)
+            {
+                add_styled_section(body, "Signature");
+                add_styled_section(body, "Arguments");
+                if (m_type != TopicType::constructor)
+                    add_styled_section(body, "Return Value");
+                add_styled_section(body, "Syntax");
+            }
+            else
+            {
+                add_styled_section(body, "Overload List");
+            }
+        }
+
+        add_styled_section(body, "See also");
+    }
 
     // File I/O
     return doc.SaveFile(m_filename.c_str()) == XML_SUCCESS;
