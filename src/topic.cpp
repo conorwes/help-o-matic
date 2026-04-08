@@ -15,12 +15,7 @@ Topic::Topic(std::string topic_name, std::string keyword, std::string filename, 
     m_filename = (target_dir / (f + ".htm")).string();
 
     // 2. Sanitize Filename
-    auto sanitize = [this](const std::string& chars, const std::string& replacements) {
-        for (size_t i = 0; i < chars.size(); ++i) {
-            std::replace(m_filename.begin(), m_filename.end(), chars[i], replacements[i]);
-        }
-    };
-    sanitize("(),<>{}", "__-____");
+    sanitize_filename(m_filename, g_bad_chars, g_good_chars);
 
     m_filename.erase(std::remove_if(m_filename.begin(), m_filename.end(), [](unsigned char c) {
         return std::isspace(c) || c == '\n' || c == '\r';

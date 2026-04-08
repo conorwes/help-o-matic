@@ -5,10 +5,9 @@
 #include <iostream>
 #include <optional>
 #include <vector>
-#include <unordered_map>
+#include <map>
 #include <cctype>
 #include <algorithm>
-#include <map>
 
 #include "include/tinyxml2.h"
 
@@ -54,10 +53,27 @@ static const std::map<TopicType, TypeInfo> g_type_map = {
     {TopicType::function,      {g_funcs_dir, " Function"}}
 };
 
+struct CaseInsensitiveComparer {
+    bool operator()(const std::string& a, const std::string& b) const {
+        return std::lexicographical_compare(a.begin(), a.end(), b.begin(), b.end(), [](char c1, char c2) {
+            return std::tolower(static_cast<unsigned char>(c1)) < std::tolower(static_cast<unsigned char>(c2));
+        });
+    }
+};
+
 struct DomainObject
 {
     std::string Name;
     std::vector<std::string> Constructors;
     std::vector<std::string> Properties;
-    std::unordered_map<std::string, std::vector<std::string>> Methods;
+    std::map<std::string, std::vector<std::string>, CaseInsensitiveComparer> Methods;
 };
+
+const std::string g_bad_chars = "(),<>{}";
+const std::string g_good_chars = "__-____";
+
+inline auto sanitize_filename = [](std::string& filename, const std::string& chars, const std::string& replacements) -> void {
+        for (size_t i = 0; i < chars.size(); ++i) {
+            std::replace(filename.begin(), filename.end(), chars[i], replacements[i]);
+        }
+    };

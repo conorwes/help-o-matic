@@ -10,7 +10,7 @@ auto main() -> int
 {
     // proof-of-concept, ingest the ExtraHelpObjectMap_Nanosecond.xml file
     std::vector<DomainObject> domainObjects;
-    std::unordered_map<std::string, std::vector<std::string>> funcs;
+    std::map<std::string, std::vector<std::string>, CaseInsensitiveComparer> funcs;
 
     XMLDocument doc;
 
@@ -69,7 +69,7 @@ auto main() -> int
                 // 2. Next iterate through all children and retrieve Constructors, Properties, and Methods
                 std::vector<std::string> consts;
                 std::vector<std::string> props;
-                std::unordered_map<std::string, std::vector<std::string>> meths;
+                std::map<std::string, std::vector<std::string>, CaseInsensitiveComparer> meths;
                 for (XMLElement *m = e->FirstChildElement(); m != nullptr; m = m->NextSiblingElement())
                 {
                     // Properties don't have any children
@@ -163,20 +163,38 @@ auto main() -> int
 
     // 6. Now iterate through each of the DomainObjects, create a Topic, and generate the placeholder file
     std::vector<Topic> topics;
-    for (auto d : domainObjects)
+    for (auto it = domainObjects.begin(); it != domainObjects.end(); ++it)
     {
-        auto tName = d.Name;
-        auto tKeyword = d.Name;
-        auto tFilename = d.Name;
+        std::string prev_topic, next_topic;
+        if (it == domainObjects.begin()) {
+            prev_topic = ""; // TODO - need to automatically generate the "Available Objects" page
+        } else {
+            auto filename = std::prev(it)->Name;
+            sanitize_filename(filename, g_bad_chars, g_good_chars);
+            prev_topic = filename + ".htm";
+        }
+
+        if (std::next(it) == domainObjects.end()) {
+            // loop back to first DomainObject
+            next_topic = domainObjects.begin()->Name + ".htm";
+        } else {
+            auto filename = std::next(it)->Name;
+            sanitize_filename(filename, g_bad_chars, g_good_chars);
+            next_topic = filename + ".htm";
+        }
+
+        auto tName = it->Name;
+        auto tKeyword = it->Name;
+        auto tFilename = it->Name;
         Topic t(tName, tKeyword, tFilename, TopicType::domain_object);
-        if (!t.create_topic())
+        if (!t.create_topic(prev_topic, next_topic))
             return 1;
 
         topics.push_back(t);
 
-        if (!d.Constructors.empty())
+        if (!it->Constructors.empty())
         {
-            for (auto c : d.Constructors)
+            for (auto c : it->Constructors)
             {
                 auto name = c;
                 auto keyword = c;
@@ -187,29 +205,29 @@ auto main() -> int
             }
         }
 
-        if (!d.Properties.empty())
+        if (!it->Properties.empty())
         {
-            for (auto p : d.Properties)
+            for (auto p : it->Properties)
             {
-                auto name = d.Name + "." + p;
+                auto name = it->Name + "." + p;
                 auto keyword = p;
-                auto filename = d.Name + "-" + p;
+                auto filename = it->Name + "-" + p;
                 Topic pT(name, keyword, filename, TopicType::property);
                 if (!pT.create_topic())
                     return 1;
             }
         }
 
-        if (!d.Methods.empty())
+        if (!it->Methods.empty())
         {
-            for (auto m : d.Methods)
+            for (auto m : it->Methods)
             {
                 if (m.second.size() > 1)
                 {
                     // Multiple overloads -> we need a method summary page
-                    auto name = d.Name + "." + m.first;
-                    auto keyword = d.Name + "." + m.first;
-                    auto filename = d.Name + "." + m.first;
+                    auto name = it->Name + "." + m.first;
+                    auto keyword = it->Name + "." + m.first;
+                    auto filename = it->Name + "." + m.first;
                     Topic mT(name, keyword, filename, TopicType::method);
                     if (!mT.create_topic())
                         return 1;
@@ -229,20 +247,35 @@ auto main() -> int
     }
 
     // 7. Next iterate through each of the Functions, create a Topic, and generate the placeholder file
-    for (auto f : funcs)
+    for (auto it = funcs.begin(); it != funcs.end(); ++it)
     {
-        if (f.second.size() > 1)
-        {
-            // Multiple overloads -> we need a function summary page
-            auto name = f.first;
-            auto keyword = f.first;
-            auto filename = f.first;
-            Topic fT(name, keyword, filename, TopicType::function);
-            if (!fT.create_topic())
-                return 1;
+        std::string prev_topic, next_topic;
+        if (it == funcs.begin()) {
+            prev_topic = ""; // TODO - need to automatically generate the "Available Functions" page
+        } else {
+            auto filename = std::prev(it)->first;
+            sanitize_filename(filename, g_bad_chars, g_good_chars);
+            prev_topic = filename + ".htm";
         }
 
-        for (auto o : f.second)
+        if (std::next(it) == funcs.end()) {
+            next_topic = "../../application_program_interface.htm";
+        } else {
+            auto filename = std::next(it)->first;
+            sanitize_filename(filename, g_bad_chars, g_good_chars);
+            next_topic = filename + ".htm";
+        }
+
+        // First make a Function summary page
+        auto name = it->first;
+        auto keyword = it->first;
+        auto filename = it->first;
+        Topic fT(name, keyword, filename, TopicType::function);
+        if (!fT.create_topic(prev_topic, next_topic))
+            return 1;
+
+        // Then make pages for each individual overload
+        for (auto o : it->second)
         {
             auto name = o;
             auto keyword = o;
