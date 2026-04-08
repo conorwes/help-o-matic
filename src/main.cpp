@@ -170,18 +170,24 @@ auto main() -> int
     for (auto it = domainObjects.begin(); it != domainObjects.end(); ++it)
     {
         std::string prev_topic, next_topic;
-        if (it == domainObjects.begin()) {
+        if (it == domainObjects.begin())
+        {
             prev_topic = "available_objects.htm";
-        } else {
+        }
+        else
+        {
             auto filename = std::prev(it)->Name;
             sanitize_filename(filename, g_bad_chars, g_good_chars);
             prev_topic = filename + ".htm";
         }
 
-        if (std::next(it) == domainObjects.end()) {
+        if (std::next(it) == domainObjects.end())
+        {
             // loop back to first DomainObject
             next_topic = domainObjects.begin()->Name + ".htm";
-        } else {
+        }
+        else
+        {
             auto filename = std::next(it)->Name;
             sanitize_filename(filename, g_bad_chars, g_good_chars);
             next_topic = filename + ".htm";
@@ -258,17 +264,23 @@ auto main() -> int
     for (auto it = funcs.begin(); it != funcs.end(); ++it)
     {
         std::string prev_topic, next_topic;
-        if (it == funcs.begin()) {
+        if (it == funcs.begin())
+        {
             prev_topic = "available_functions.htm";
-        } else {
+        }
+        else
+        {
             auto filename = std::prev(it)->first;
             sanitize_filename(filename, g_bad_chars, g_good_chars);
             prev_topic = filename + ".htm";
         }
 
-        if (std::next(it) == funcs.end()) {
+        if (std::next(it) == funcs.end())
+        {
             next_topic = "../../application_program_interface.htm";
-        } else {
+        }
+        else
+        {
             auto filename = std::next(it)->first;
             sanitize_filename(filename, g_bad_chars, g_good_chars);
             next_topic = filename + ".htm";

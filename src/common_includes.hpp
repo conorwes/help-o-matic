@@ -30,7 +30,6 @@ const std::filesystem::path g_funcs_dir = g_autogen_dir / "Functions";
 const std::string g_placeholder = "%%PLACEHOLDER%%";
 const std::string g_header_color = "#808080";
 
-
 enum class TopicType
 {
     domain_object,
@@ -42,26 +41,27 @@ enum class TopicType
     available_funcs
 };
 
-struct TypeInfo {
+struct TypeInfo
+{
     std::filesystem::path dir;
     std::string suffix;
 };
 
 static const std::map<TopicType, TypeInfo> g_type_map = {
     {TopicType::domain_object, {g_do_dir, " Object"}},
-    {TopicType::constructor,   {g_cons_dir, " Constructor"}},
-    {TopicType::property,      {g_props_dir, " Property"}},
-    {TopicType::method,        {g_meths_dir, " Method"}},
-    {TopicType::function,      {g_funcs_dir, " Function"}},
+    {TopicType::constructor, {g_cons_dir, " Constructor"}},
+    {TopicType::property, {g_props_dir, " Property"}},
+    {TopicType::method, {g_meths_dir, " Method"}},
+    {TopicType::function, {g_funcs_dir, " Function"}},
     {TopicType::available_dos, {g_do_dir, ""}},
-    {TopicType::available_funcs, {g_funcs_dir, ""}}
-};
+    {TopicType::available_funcs, {g_funcs_dir, ""}}};
 
-struct CaseInsensitiveComparer {
-    bool operator()(const std::string& a, const std::string& b) const {
-        return std::lexicographical_compare(a.begin(), a.end(), b.begin(), b.end(), [](char c1, char c2) {
-            return std::tolower(static_cast<unsigned char>(c1)) < std::tolower(static_cast<unsigned char>(c2));
-        });
+struct CaseInsensitiveComparer
+{
+    bool operator()(const std::string &a, const std::string &b) const
+    {
+        return std::lexicographical_compare(a.begin(), a.end(), b.begin(), b.end(), [](char c1, char c2)
+                                            { return std::tolower(static_cast<unsigned char>(c1)) < std::tolower(static_cast<unsigned char>(c2)); });
     }
 };
 
@@ -76,8 +76,10 @@ struct DomainObject
 const std::string g_bad_chars = "(),<>{}";
 const std::string g_good_chars = "__-____";
 
-inline auto sanitize_filename = [](std::string& filename, const std::string& chars, const std::string& replacements) -> void {
-        for (size_t i = 0; i < chars.size(); ++i) {
-            std::replace(filename.begin(), filename.end(), chars[i], replacements[i]);
-        }
-    };
+inline auto sanitize_filename = [](std::string &filename, const std::string &chars, const std::string &replacements) -> void
+{
+    for (size_t i = 0; i < chars.size(); ++i)
+    {
+        std::replace(filename.begin(), filename.end(), chars[i], replacements[i]);
+    }
+};
