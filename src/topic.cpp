@@ -62,6 +62,34 @@ void add_styled_section(XMLNode *parent, const std::string &title)
     p->SetAttribute("class", "p_Normal");
 }
 
+void add_collapsable_section(XMLNode *parent, const std::string &text, const std::string &toggle_id){
+    // 1. The toggle button and label
+    auto toggle = add_element(parent, "p");
+    toggle->SetAttribute("class", "p_Normal");
+    toggle->SetAttribute("style", "text-indent: -0.1875in;margin: 0 0 0.0208in 0.1875in;");
+
+    auto img = add_element(toggle, "img");
+    img->SetAttribute("id", (toggle_id + "_ICON").c_str());
+    img->SetAttribute("class", "dropdown-toggle-icon");
+    img->SetAttribute("style", "margin: 0; width: 0.938in;height: 0.0938in;border:none;");
+    img->SetAttribute("src", "../../Resources/Images/hmtoggle_plus1.gif");
+
+    auto a = add_element(img, "a", text.c_str());
+    a->SetAttribute("class", "dropdown-toggle");
+    a->SetAttribute("style", "font-style: normal;font-weight: normal;color: #000000;background-color: transparent;text-decoration: none;"); // TODO - Update this to use the heading style
+    a->SetAttribute("href", ("javascript:HMToggle('toggle,'" + toggle_id + "','" + toggle_id + "_ICON')").c_str());
+
+    // 2. The toggle body
+    auto div = add_element(parent, "div");
+    div->SetAttribute("id", toggle_id.c_str());
+    div->SetAttribute("class", "dropdown-toggle-body");
+    div->SetAttribute("style", "text-align: left;padding: 0 0 0 0;margin: 0 0 0.0208in 0.1875in;");
+
+    auto p = add_element(div, "p");
+    p->SetAttribute("class", "p_Normal");
+    p->SetText(g_placeholder.c_str());
+}
+
 // Main generation logic
 auto Topic::create_topic(std::string prev_topic, std::string next_topic) -> bool
 {
@@ -141,14 +169,18 @@ auto Topic::create_topic(std::string prev_topic, std::string next_topic) -> bool
             add_styled_section(body, "Available In Editions:");
 
             // Collapsible sections
+            auto id = "toggle0186a";
+            int id_suffix = 1;
             for (const auto &section : {"Constructors", "Properties", "Methods"})
             {
-                auto det = add_element(body, "details");
+                /*auto det = add_element(body, "details");
                 auto sum = add_element(det, "summary");
                 auto h = add_element(sum, "h2");
                 h->SetAttribute("class", "p_Heading2");
                 add_element(h, "span", section)->SetAttribute("class", "f_Heading2");
-                add_element(det, "p", g_placeholder.c_str())->SetAttribute("class", "p_Normal");
+                add_element(det, "p", g_placeholder.c_str())->SetAttribute("class", "p_Normal");*/
+                add_collapsable_section(body, section, id + std::to_string(id_suffix));
+                id_suffix++;
             }
         }
         else if (m_type == TopicType::property)
