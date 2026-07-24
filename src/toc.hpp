@@ -6,7 +6,7 @@
 class TableOfContent
 {
 public:
-    TableOfContent(const std::vector<Topic> &topics, const std::string &filename);
+    explicit TableOfContent(const std::vector<Topic> &topics, const std::string &filename);
     auto create_toc() -> bool;
 
 private:

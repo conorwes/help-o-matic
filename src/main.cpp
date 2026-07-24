@@ -1,317 +1,200 @@
-
 #include "topic.hpp"
 #include "toc.hpp"
 #include "common_includes.hpp"
+#include "help_map_parser.hpp"
 
-using namespace tinyxml2;
 using namespace std::filesystem;
 
-auto main() -> int
+namespace
 {
-    // proof-of-concept, ingest the ExtraHelpObjectMap_Nanosecond.xml file
-    std::vector<DomainObject> domainObjects;
-    std::map<std::string, std::vector<std::string>, CaseInsensitiveComparer> funcs;
+auto sanitize_topic_filename(std::string input) -> std::string
+{
+    std::replace(input.begin(), input.end(), '.', '-');
+    sanitize_filename(input, g_bad_chars, g_good_chars);
+    input.erase(std::remove_if(input.begin(), input.end(), [](unsigned char c)
+                               { return std::isspace(c) || c == '\n' || c == '\r'; }),
+                input.end());
+    return input + ".htm";
+}
+} // namespace
 
-    XMLDocument doc;
+auto main(int argc, char **argv) -> int
+{
+    const path input_file = (argc > 1) ? path{argv[1]} : path{"../test_files/ExtraHelpObjectMap_Nanosecond.xml"};
 
-    // 1. Load the file
-    auto filepath = std::string("C:\\help-o-matic\\test_files\\ExtraHelpObjectMap_Nanosecond.xml");
-    XMLError eResult = doc.LoadFile(filepath.c_str());
-    if (eResult != XML_SUCCESS)
+    ParsedHelpMap parsed_help_map;
+    std::string parse_error;
+    if (!parse_help_map_xml(input_file, parsed_help_map, parse_error))
     {
-        std::cerr << "Error loading XML: " << doc.ErrorIDToName(eResult) << std::endl;
+        std::cerr << parse_error << '\n';
         return 1;
     }
 
-    // 2. Find the root element
-    XMLNode *root = doc.FirstChildElement();
-    if (root == nullptr)
-        return 1;
+    auto &domain_objects = parsed_help_map.domain_objects;
+    auto &functions = parsed_help_map.functions;
 
-    auto isExcludedType = [](const std::string &type) -> bool
-    {
-        std::vector<std::string> excluded_types = {"FFDiagnostics"};
-
-        if (type.find("List<") != std::string::npos)
-        {
-            return (type.find("List<Object>") == std::string::npos);
-        }
-
-        for (auto t : excluded_types)
-        {
-            if (type.find(t) != std::string::npos)
-            {
-                return true;
-            }
-        }
-
-        return false;
+    const std::vector<path> output_paths = {
+        g_proj_dir,
+        g_toc_dir,
+        g_content_dir,
+        g_autogen_dir,
+        g_do_dir,
+        g_cons_dir,
+        g_props_dir,
+        g_meths_dir,
+        g_funcs_dir,
     };
 
-    // 3. Recursive search for "Object" tags
-    XMLNode *objectsNode = root->FirstChildElement();
-    for (XMLElement *e = objectsNode->FirstChildElement(); e != nullptr; e = e->NextSiblingElement())
-    {
-        if (e != nullptr)
-        {
-            // We should only ever hit "Object" nodes, but it can't hurt to be sure
-            if (std::string(e->Value()) == std::string("Object"))
-            {
-                // 1. First get the Object's name
-                const char *nameAttr = e->Attribute("name");
-                auto nameStr = (nameAttr != nullptr && !isExcludedType(std::string(nameAttr))) ? std::string(nameAttr) : "INVALID";
-                if (nameStr == "INVALID")
-                    continue;
-
-                DomainObject d;
-                d.Name = nameStr;
-
-                // 2. Next iterate through all children and retrieve Constructors, Properties, and Methods
-                std::vector<std::string> consts;
-                std::vector<std::string> props;
-                std::map<std::string, std::vector<std::string>, CaseInsensitiveComparer> meths;
-                for (XMLElement *m = e->FirstChildElement(); m != nullptr; m = m->NextSiblingElement())
-                {
-                    // Properties don't have any children
-                    if (m->FirstChildElement() == nullptr)
-                    {
-                        const char *memNameAttr = m->Attribute("name");
-                        if (memNameAttr != nullptr)
-                        {
-                            props.push_back(std::string(memNameAttr));
-                        }
-                    }
-                    else
-                    {
-                        // Constructors and Methods have children
-                        if (std::string(m->Value()) == std::string("Constructors"))
-                        {
-                            // This node is the Constructors node
-                            for (XMLElement *c = m->FirstChildElement(); c != nullptr; c = c->NextSiblingElement())
-                            {
-                                const char *sig = c->GetText();
-                                consts.push_back(std::string(sig));
-                            }
-                        }
-                        else if (std::string(m->Value()) == std::string("Member"))
-                        {
-                            // This node is a Method
-                            const char *methNameAttr = m->Attribute("name");
-                            if (methNameAttr != nullptr)
-                            {
-                                XMLElement *overloads = m->FirstChildElement();
-                                for (XMLElement *o = overloads->FirstChildElement(); o != nullptr; o = o->NextSiblingElement())
-                                {
-                                    const char *signature = o->GetText();
-                                    meths[methNameAttr].push_back(std::string(signature));
-                                }
-                            }
-                        }
-                        else
-                        {
-                            return 1;
-                        }
-                    }
-                }
-
-                if (consts.size() != 0)
-                {
-                    d.Constructors = consts;
-                }
-                d.Properties = props;
-                d.Methods = meths;
-                domainObjects.push_back(d);
-            }
-        }
-    }
-
-    // 4. Recursive search for "Function" tags
-    XMLNode *functionsNode = objectsNode->NextSibling();
-    for (XMLElement *e = functionsNode->FirstChildElement(); e != nullptr; e = e->NextSiblingElement())
-    {
-        // We should only ever hit "Function" nodes, but it can't hurt to be sure
-        if (std::string(e->Value()) == std::string("Function"))
-        {
-            // This node is a Function
-            const char *funcNameAttr = e->Attribute("name");
-            if (funcNameAttr != nullptr)
-            {
-                XMLElement *overloads = e->FirstChildElement();
-                for (XMLElement *o = overloads->FirstChildElement(); o != nullptr; o = o->NextSiblingElement())
-                {
-                    const char *signature = o->GetText();
-                    funcs[funcNameAttr].push_back(std::string(signature));
-                }
-            }
-        }
-    }
-
-    // 5. Verify the existence of the output directories
-    std::vector<std::filesystem::path> autogen_paths = {g_autogen_dir, g_do_dir, g_cons_dir, g_props_dir, g_meths_dir, g_funcs_dir};
-    for (auto p : autogen_paths)
+    for (const auto &output_path : output_paths)
     {
         std::error_code ec;
-        if (!std::filesystem::create_directory(p, ec))
+        create_directories(output_path, ec);
+        if (ec)
         {
-            if (ec)
-            {
-                std::cout << ec.message();
-                return 1;
-            }
+            std::cerr << "Failed to create directory '" << output_path.string() << "': " << ec.message() << '\n';
+            return 1;
         }
     }
 
-    // 6. Now iterate through each of the DomainObjects, create a Topic, and generate the placeholder file
     std::vector<Topic> topics;
-    auto availableObjects = Topic(std::string("Available Objects"), std::string("available objects"), std::string("available_objects"), TopicType::available_dos);
-    availableObjects.create_topic("../../objects_and_functions.htm", domainObjects.begin()->Name + ".htm");
-    topics.push_back(availableObjects);
 
-    for (auto it = domainObjects.begin(); it != domainObjects.end(); ++it)
+    Topic available_objects("Available Objects", "available objects", "available_objects", TopicType::available_dos);
+    if (!available_objects.create_topic("../../objects_and_functions.htm", sanitize_topic_filename(domain_objects.front().Name)))
     {
-        std::string prev_topic, next_topic;
-        if (it == domainObjects.begin())
+        return 1;
+    }
+    topics.push_back(available_objects);
+
+    for (auto it = domain_objects.begin(); it != domain_objects.end(); ++it)
+    {
+        std::string prev_topic;
+        std::string next_topic;
+
+        if (it == domain_objects.begin())
         {
             prev_topic = "available_objects.htm";
         }
         else
         {
-            auto filename = std::prev(it)->Name;
-            sanitize_filename(filename, g_bad_chars, g_good_chars);
-            prev_topic = filename + ".htm";
+            prev_topic = sanitize_topic_filename(std::prev(it)->Name);
         }
 
-        if (std::next(it) == domainObjects.end())
+        if (std::next(it) == domain_objects.end())
         {
-            // loop back to first DomainObject
-            next_topic = domainObjects.begin()->Name + ".htm";
+            next_topic = sanitize_topic_filename(domain_objects.front().Name);
         }
         else
         {
-            auto filename = std::next(it)->Name;
-            sanitize_filename(filename, g_bad_chars, g_good_chars);
-            next_topic = filename + ".htm";
+            next_topic = sanitize_topic_filename(std::next(it)->Name);
         }
 
-        auto tName = it->Name;
-        auto tKeyword = it->Name;
-        auto tFilename = it->Name;
-        Topic t(tName, tKeyword, tFilename, TopicType::domain_object);
-        if (!t.create_topic(prev_topic, next_topic))
+        Topic topic(it->Name, it->Name, it->Name, TopicType::domain_object);
+        if (!topic.create_topic(prev_topic, next_topic))
+        {
             return 1;
+        }
+        topics.push_back(topic);
 
-        topics.push_back(t);
-
-        if (!it->Constructors.empty())
+        for (const auto &constructor_signature : it->Constructors)
         {
-            for (auto c : it->Constructors)
+            Topic constructor_topic(constructor_signature, constructor_signature, constructor_signature, TopicType::constructor, true);
+            if (!constructor_topic.create_topic())
             {
-                auto name = c;
-                auto keyword = c;
-                auto filename = c;
-                Topic cT(name, keyword, filename, TopicType::constructor, true);
-                if (!cT.create_topic())
-                    return 1;
+                return 1;
             }
         }
 
-        if (!it->Properties.empty())
+        for (const auto &property_name : it->Properties)
         {
-            for (auto p : it->Properties)
+            const auto display_name = it->Name + "." + property_name;
+            Topic property_topic(display_name, property_name, it->Name + "-" + property_name, TopicType::property);
+            if (!property_topic.create_topic())
             {
-                auto name = it->Name + "." + p;
-                auto keyword = p;
-                auto filename = it->Name + "-" + p;
-                Topic pT(name, keyword, filename, TopicType::property);
-                if (!pT.create_topic())
-                    return 1;
+                return 1;
             }
         }
 
-        if (!it->Methods.empty())
+        for (const auto &[method_name, overloads] : it->Methods)
         {
-            for (auto m : it->Methods)
+            if (overloads.size() > 1U)
             {
-                if (m.second.size() > 1)
+                const auto method_name_with_object = it->Name + "." + method_name;
+                Topic method_topic(method_name_with_object, method_name_with_object, method_name_with_object, TopicType::method);
+                if (!method_topic.create_topic())
                 {
-                    // Multiple overloads -> we need a method summary page
-                    auto name = it->Name + "." + m.first;
-                    auto keyword = it->Name + "." + m.first;
-                    auto filename = it->Name + "." + m.first;
-                    Topic mT(name, keyword, filename, TopicType::method);
-                    if (!mT.create_topic())
-                        return 1;
+                    return 1;
                 }
+            }
 
-                for (auto o : m.second)
+            for (const auto &overload_signature : overloads)
+            {
+                Topic overload_topic(overload_signature, overload_signature, overload_signature, TopicType::method, true);
+                if (!overload_topic.create_topic())
                 {
-                    auto name = o;
-                    auto keyword = o;
-                    auto filename = o;
-                    Topic mT(name, keyword, filename, TopicType::method, true);
-                    if (!mT.create_topic())
-                        return 1;
+                    return 1;
                 }
             }
         }
     }
 
-    // 7. Next iterate through each of the Functions, create a Topic, and generate the placeholder file
-    auto availableFunctions = Topic(std::string("Available Functions"), std::string("available functions"), std::string("available_functions"), TopicType::available_funcs);
-    availableFunctions.create_topic("../DomainObjects/" + domainObjects.back().Name + ".htm", funcs.begin()->first + ".htm");
-    topics.push_back(availableFunctions);
-
-    for (auto it = funcs.begin(); it != funcs.end(); ++it)
+    const std::string previous_for_available_functions = "../DomainObjects/" + sanitize_topic_filename(domain_objects.back().Name);
+    const std::string next_for_available_functions = functions.empty()
+                                                         ? "../../application_program_interface.htm"
+                                                         : sanitize_topic_filename(functions.begin()->first);
+    Topic available_functions("Available Functions", "available functions", "available_functions", TopicType::available_funcs);
+    if (!available_functions.create_topic(previous_for_available_functions, next_for_available_functions))
     {
-        std::string prev_topic, next_topic;
-        if (it == funcs.begin())
+        return 1;
+    }
+    topics.push_back(available_functions);
+
+    for (auto it = functions.begin(); it != functions.end(); ++it)
+    {
+        std::string prev_topic;
+        std::string next_topic;
+
+        if (it == functions.begin())
         {
             prev_topic = "available_functions.htm";
         }
         else
         {
-            auto filename = std::prev(it)->first;
-            sanitize_filename(filename, g_bad_chars, g_good_chars);
-            prev_topic = filename + ".htm";
+            prev_topic = sanitize_topic_filename(std::prev(it)->first);
         }
 
-        if (std::next(it) == funcs.end())
+        if (std::next(it) == functions.end())
         {
             next_topic = "../../application_program_interface.htm";
         }
         else
         {
-            auto filename = std::next(it)->first;
-            sanitize_filename(filename, g_bad_chars, g_good_chars);
-            next_topic = filename + ".htm";
+            next_topic = sanitize_topic_filename(std::next(it)->first);
         }
 
-        // First make a Function summary page
-        auto name = it->first;
-        auto keyword = it->first;
-        auto filename = it->first;
-        Topic fT(name, keyword, filename, TopicType::function);
-        if (!fT.create_topic(prev_topic, next_topic))
-            return 1;
-
-        // Then make pages for each individual overload
-        for (auto o : it->second)
+        Topic function_topic(it->first, it->first, it->first, TopicType::function);
+        if (!function_topic.create_topic(prev_topic, next_topic))
         {
-            auto name = o;
-            auto keyword = o;
-            auto filename = o;
-            Topic fT(name, keyword, filename, TopicType::function, true);
-            if (!fT.create_topic())
-                return 1;
+            return 1;
+        }
 
-            topics.push_back(fT);
+        for (const auto &overload_signature : it->second)
+        {
+            Topic overload_topic(overload_signature, overload_signature, overload_signature, TopicType::function, true);
+            if (!overload_topic.create_topic())
+            {
+                return 1;
+            }
+
+            topics.push_back(overload_topic);
         }
     }
 
-    // 8. Finally, create a TableOfContent and generate the file
     TableOfContent toc(topics, "toc");
     if (!toc.create_toc())
+    {
+        std::cerr << "Failed to write TOC file.\n";
         return 1;
+    }
 
     return 0;
 }
