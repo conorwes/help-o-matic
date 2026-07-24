@@ -51,18 +51,18 @@ XMLElement *add_element(XMLNode *parent, const char *name, const char *text = nu
     return el;
 }
 
-void add_styled_section(XMLNode *parent, const std::string &title)
+void add_styled_section(XMLNode *parent, const std::string &title, const std::string &placeholder_text)
 {
     auto h2 = add_element(parent, "h2");
     h2->SetAttribute("class", "p_Heading2");
     auto span = add_element(h2, "span", title.c_str());
     span->SetAttribute("class", "f_Heading2");
 
-    auto p = add_element(parent, "p", g_placeholder.c_str());
+    auto p = add_element(parent, "p", placeholder_text.c_str());
     p->SetAttribute("class", "p_Normal");
 }
 
-void add_collapsable_section(XMLNode *parent, const std::string &text, const std::string &toggle_id)
+void add_collapsable_section(XMLNode *parent, const std::string &text, const std::string &toggle_id, const std::string &placeholder_text)
 {
     // 1. The toggle button and label
     auto toggle = add_element(parent, "p");
@@ -91,7 +91,7 @@ void add_collapsable_section(XMLNode *parent, const std::string &text, const std
 
     auto p = add_element(div, "p");
     p->SetAttribute("class", "p_Normal");
-    p->SetText(g_placeholder.c_str());
+    p->SetText(placeholder_text.c_str());
 }
 
 // Main generation logic
